@@ -39,12 +39,12 @@ func writeJobs(jobs []extractedJob) {
 	w := csv.NewWriter(file)
 	defer w.Flush()
 
-	headers := []string{"ID", "Title", "Location", "Summary"}
+	headers := []string{"Link", "Title", "Location", "Summary"}
 	wErr := w.Write(headers)
 	checkErr(wErr)
 
 	for _, job := range jobs {
-		jobSlice := []string{job.id, job.title, job.location, job.summary}
+		jobSlice := []string{"https://kr.indeed.com/viewjob?jk=" + job.id, job.title, job.location, job.summary}
 		jwErr := w.Write(jobSlice)
 		checkErr(jwErr)
 	}
