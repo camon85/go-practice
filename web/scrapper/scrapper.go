@@ -1,4 +1,4 @@
-package main
+package scrapper
 
 import (
 	"encoding/csv"
@@ -18,14 +18,14 @@ type extractedJob struct {
 	summary  string
 }
 
-var baseURL = "https://kr.indeed.com/jobs?q=python&limit=50"
-
-func main() {
+// Scrape indeed by a term
+func Scrape(term string) {
+	var baseURL = "https://kr.indeed.com/jobs?q=" + term + "&limit=50"
 	var jobs []extractedJob
 	c := make(chan []extractedJob)
-	totalPages := getPages()
+	totalPages := getPages(baseURL)
 	for i := 0; i < totalPages; i++ {
-		go getPage(i, c)
+		go getPage(i, baseURL, c)
 	}
 
 	for i := 0; i < totalPages; i++ {
@@ -37,9 +37,9 @@ func main() {
 	fmt.Println("Extracted rows: ", len(jobs))
 }
 
-func getPages() int {
+func getPages(url string) int {
 	pages := 0
-	res, err := http.Get(baseURL)
+	res, err := http.Get(url)
 	checkErr(err)
 	checkCode(res)
 
@@ -55,10 +55,10 @@ func getPages() int {
 	return pages
 }
 
-func getPage(page int, mainChannel chan<- []extractedJob) {
+func getPage(page int, url string, mainChannel chan<- []extractedJob) {
 	var jobs []extractedJob
 	c := make(chan extractedJob)
-	pageURL := baseURL + "&start" + strconv.Itoa(page*50)
+	pageURL := url + "&start" + strconv.Itoa(page*50)
 	fmt.Println("Requesting...", pageURL)
 	res, err := http.Get(pageURL)
 	checkErr(err)
@@ -85,9 +85,9 @@ func getPage(page int, mainChannel chan<- []extractedJob) {
 
 func extractJob(card *goquery.Selection, c chan<- extractedJob) {
 	id, _ := card.Attr("data-jk")
-	title := cleanString(card.Find(".companyName").Text())
-	location := cleanString(card.Find(".companyLocation").Text())
-	summary := cleanString(card.Find(".job-snippet").Text())
+	title := CleanString(card.Find(".companyName").Text())
+	location := CleanString(card.Find(".companyLocation").Text())
+	summary := CleanString(card.Find(".job-snippet").Text())
 	c <- extractedJob{
 		id:       id,
 		title:    title,
@@ -96,7 +96,7 @@ func extractJob(card *goquery.Selection, c chan<- extractedJob) {
 }
 
 func writeJobs(jobs []extractedJob) {
-	file, err := os.Create("jobscrapper/jobs.csv")
+	file, err := os.Create("web/jobs.csv")
 	checkErr(err)
 
 	w := csv.NewWriter(file)
@@ -125,6 +125,7 @@ func checkCode(res *http.Response) {
 	}
 }
 
-func cleanString(str string) string {
+// CleanString cleans a string
+func CleanString(str string) string {
 	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")
 }
